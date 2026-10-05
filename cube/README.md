@@ -8,7 +8,9 @@ licensing are retained. Cube additions live in `cube.json` and `cube/`.
 
 The upstream company has announced its shutdown. This package runs the local
 workspaces, coding agents and review UI; cloud projects, boards, relay and team
-services are not supplied by this integration. Use the Workspaces section.
+services are not supplied by this integration. Cube opens the local Workspaces
+section by redirecting exact GET `/` to `/workspaces`, preserving saved accounts
+and project preferences.
 
 Installation fetches the exact native Rust binary used by upstream's npm CLI,
 checks a committed SHA-256 from its versioned distribution manifest, and installs
@@ -33,8 +35,9 @@ HOME stays unchanged in normal operation, allowing installed Claude Code, Codex,
 Git and GitHub commands to reuse existing sign-ins. The adapter never reads or
 copies credential files. App settings may install or select additional agents.
 
-Both the main server and upstream's auxiliary preview proxy bind 127.0.0.1; only
-the main server uses Cube's PORT. Cube authenticates requests before they reach
+The Node landing proxy, native server and auxiliary preview proxy bind 127.0.0.1;
+only the landing proxy uses Cube's PORT. It forwards all other HTTP and WebSocket
+paths, retaining Host and Origin for upstream checks. Cube authenticates requests before they reach
 the app. The pinned middleware compares Origin with each request's Host, so the
 dynamic Cube hostname and desktop gate port work without a wildcard origin list.
 The upstream binary attempts to open a browser at boot; on the headless cloud
@@ -43,3 +46,4 @@ machine this is harmless and the UI opens through Cube.
 Validate with `sh -n cube/install.sh`, `node --check cube/start.mjs`,
 `sh cube/install.sh` and `node cube/smoke.mjs`. The smoke test uses isolated data,
 tests UI/API/origins/WebSocket and config persistence, and stops its own server.
+`node --test cube/*.test.mjs` covers the landing proxy and owned process cleanup.

@@ -55,7 +55,7 @@ function request(route, headers = {}, body) {
 function websocket(origin, host) {
   return new Promise((resolve, reject) => {
     const req = http.request({ host: '127.0.0.1', port, path: '/api/workspaces/streams/ws', headers: {
-      Host: host, Origin: origin, Connection: 'Upgrade', Upgrade: 'websocket',
+      Host: host, Origin: origin, 'X-Forwarded-Proto': 'https', Connection: 'Upgrade', Upgrade: 'websocket',
       'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
     } });
     req.on('upgrade', (res, socket) => { socket.destroy(); resolve(res.statusCode); });
@@ -71,7 +71,7 @@ async function shutdown() {
   child = undefined;
   if (current.exitCode === null && current.signalCode === null) {
     const done = once(current, 'exit');
-    current.kill('SIGTERM');
+    current.kill('SIGHUP');
     const force = setTimeout(() => { try { process.kill(-current.pid, 'SIGKILL'); } catch {} }, 15000);
     await done;
     clearTimeout(force);
@@ -80,7 +80,8 @@ async function shutdown() {
 }
 try {
   await launch();
-  assert.match((await request('/')).body, /<html/);
+  assert.equal((await request('/')).status, 302);
+  assert.match((await request('/workspaces')).body, /<html/);
   const info = JSON.parse((await request('/api/info')).body).data;
   assert.equal(info.version, '0.1.44');
   assert.equal(info.config.analytics_enabled, false, 'seed config is accepted');
@@ -92,7 +93,7 @@ try {
   assert.equal(await websocket(`https://${host}`, host), 101);
   assert.equal(await websocket('https://evil.example', host), 403);
   const config = { ...info.config, git_branch_prefix: 'cube-smoke' };
-  assert.equal((await request('/api/config', { Host: host, Origin: `https://${host}`, 'Content-Type': 'application/json' }, JSON.stringify(config))).status, 200);
+  assert.equal((await request('/api/config', { Host: host, Origin: `https://${host}`, 'X-Forwarded-Proto': 'https', 'Content-Type': 'application/json' }, JSON.stringify(config))).status, 200);
   await shutdown();
   await launch();
   const restored = JSON.parse((await request('/api/info')).body).data;
