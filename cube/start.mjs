@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { ProcessGroup } from './processes.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -39,16 +39,13 @@ const env = {
   VK_ALLOWED_ORIGINS: '',
 };
 delete env.VK_TUNNEL;
-const child = spawn(binary, [], { cwd: data, env, stdio: 'inherit' });
-let stopping = false;
-let force;
-function stop(signal) {
-  if (stopping) return;
-  stopping = true;
-  child.kill(signal);
-  force = setTimeout(() => child.kill('SIGKILL'), 10000);
+const group = new ProcessGroup();
+let stopping;
+async function stop(code) {
+  if (stopping) return stopping;
+  stopping = group.stop().then(() => process.exit(code));
+  return stopping;
 }
-process.on('SIGTERM', () => stop('SIGTERM'));
-process.on('SIGINT', () => stop('SIGINT'));
-child.on('error', error => { console.error(`Cannot launch Vibe Kanban: ${error.message}`); process.exit(1); });
-child.on('exit', code => { clearTimeout(force); process.exit(code ?? (stopping ? 0 : 1)); });
+group.onUnexpectedExit = error => { console.error(error.message); void stop(1); };
+for (const signal of ['SIGHUP', 'SIGTERM', 'SIGINT']) process.on(signal, () => void stop(0));
+group.spawn(binary, [], { cwd: data, env, stdio: 'inherit' });
