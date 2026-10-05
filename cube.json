@@ -1,0 +1,8 @@
+{
+  "name": "Vibe Kanban",
+  "description": "Local coding-agent workspaces, parallel sessions and code review. Upstream cloud boards have been sunset.",
+  "icon": "packages/public/favicon-vk-light.svg",
+  "platforms": ["linux"],
+  "install": "sh cube/install.sh",
+  "start": "node cube/start.mjs"
+}
